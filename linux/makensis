@@ -1,0 +1,91 @@
+#!/bin/bash
+# License CC0-1.0 🍷
+# This shell-script is public-domain because developers strong together 
+# and holy fuck windows builds are bad enough as is.
+
+# makensis
+# A bash wrapper to run makensis.exe using system wine when building on MacOS/Linux
+#
+#   Electron Builder Provides this Script 3 Input Types:
+#     > STDIN > A procedurally generated NSIS file is passed as string via STDIN
+#     > ARGS  > Various paths passed in via command line args 
+#     > ENV   > Two paths passed via ENV vars
+#
+#   This script primarily mutates native MacOS/Linux paths from above
+#   to their "Z:\" wine equivelant. 
+#
+#   Electron Builder is hardcoded to call 
+#    :>: <CacheNsisDir>/mac/makensis or 
+#    :>: <CacheNsisDir>/linux/makensis respectively
+#
+#   We intercept this at the very last moment and re-route it to native
+#   system wine and <CacheNsisDir>/Bin/makensis.exe
+#
+# =========================================================================
+
+
+# =========================================================================
+# First we grab the content of stdin and make sure it's not empty.
+# -> (Electron Builder passes in a procedurally generated NSIS file)
+# =========================================================================
+STDIN_CONTENT=$(cat)
+if [ -z "$STDIN_CONTENT" ]; then
+    printf "❌ [makensis error] : -> No NSIS file passed via stdin to makensis bash script. Expects NSIS File via stdin.\n" >&2
+    exit 1
+fi
+# Wine-ify all script paths in two steps: 
+# ->  1) Add Z: drive label to double quoted paths starting with / 
+# ->  2) Replace ALL slashes "/" between quotes with backslashes "\"
+# EG: SomeNsisCmd "/Some/Native/FilePath" -> SomeNsisCmd "Z:\Some\Native\FilePath"
+STDIN_CONTENT=$(echo "$STDIN_CONTENT" | sed -E '
+  s|"(/[^"]+)"|"Z:\1"|g;
+  :loop
+  s|"([^"]*)/([^"]*)"|"\1\\\2"|g
+  t loop
+')
+
+
+# =========================================================================
+# Take input args and wine-ify detected native filepaths. 
+#     ✅ SomeVar=/some/path ---> SomeVar=Z:\some\path
+# =========================================================================
+INPUT_ARGS="$@"
+PROCESSED_ARGS=()
+for arg in "$@"; do
+    if [[ $arg == *"="* ]]; then
+        # Split into pre-equals and post-equals parts
+        pre_equals="${arg%%=*}"
+        post_equals="${arg#*=}"
+        
+        # Check if post-equals starts with a forward slash
+        if [[ $post_equals == /* ]]; then
+            # Replace first / with Z:\ and remaining / with \
+            windows_path="Z:\\${post_equals:1}"
+            windows_path="${windows_path//\//\\}"
+            arg="${pre_equals}=${windows_path}"
+        fi
+    fi
+    PROCESSED_ARGS+=("$arg")
+done
+
+
+# =========================================================================
+# Wine-ify two ENV var paths and setup cache-location-path
+#     ✅ /some/path ---> Z:\some\path
+# =========================================================================
+NSISDIR="Z:${NSISDIR//\//\\}"
+PWD="Z:${PWD//\//\\}"
+
+# Just one level up
+NSIS_CACHE_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd ) 
+
+
+# =========================================================================
+# Run 🍷 native wine on ../Bin/makensis.exe with wine-ified inputs from Electron-Builder
+# =========================================================================
+echo "$STDIN_CONTENT" | exec wine "$NSIS_CACHE_DIR/Bin/makensis.exe" "${PROCESSED_ARGS[@]}"
+
+# debug:
+# echo "$STDIN_CONTENT" | grep "\!addplugindir"
+# debug:
+# echo "Start args count: $#"
