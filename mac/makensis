@@ -77,7 +77,7 @@ NSISDIR="Z:${NSISDIR//\//\\}"
 PWD="Z:${PWD//\//\\}"
 
 # Just one level up
-NSIS_CACHE_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd ) 
+NSIS_CACHE_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )
 
 
 # =========================================================================
