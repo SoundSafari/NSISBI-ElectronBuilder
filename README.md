@@ -30,7 +30,7 @@ In your Electron-Builder setup, simply configure [customNsisBinary](https://www.
 If your final installer.exe size exceeds 4GB, NSISBI generates a two-file installer:
 
 
-> - 1️⃣  < Small installer.exe file >
+> - 1️⃣ < Small installer.exe file >
 > - 2️⃣ < Large data-file with  your app data >
 
 Both files will appear in your normal electron-builder output directory. To distribute your two file installer simply `.zip` both files together and distribute the `.zip` file. 
@@ -49,7 +49,7 @@ The two files must remain in the same directory in order for the installer to wo
 ### Install Wine
 - 🍎 MacOS [**[Brew]**](https://brew.sh/) `brew install --cask --no-quarantine wine-stable`
 - 🐧 Linux [**[Debian]**](https://wiki.debian.org/Wine)  `sudo apt install wine wine32 libwine fonts-wine`
--  🐧 Linux [**[Arch]**](https://wiki.archlinux.org/title/Wine) `sudo pacman -S wine`
+- 🐧 Linux [**[Arch]**](https://wiki.archlinux.org/title/Wine) `sudo pacman -S wine`
 
 ### Why Wine?
 > The decade old version of NSIS that ships with electron builder by default has native compiled MacOS/Linux NSIS binaries.
@@ -68,6 +68,21 @@ The two files must remain in the same directory in order for the installer to wo
 ## ❤️ Contributing
 Is the NSISBI version out of date? Found a Bug? Want more features?  [Open an issue](https://github.com/your/repo/issues) or PR!
 
+## Creating Releases
+Electron-Builder has a pretty *interesting* escape hatch for using custom NSIS binaries in your build, namely:
+
+1. You must provide a remote URL for your custom NSIS binary inside a 7zip archive.
+2. You must provide a the base64 encoded sha512 checksum of the the aforementioned .7z archive
+
+#### Release Generation CMDs
+```bash
+7z a -r nsisbi-electronbuilder-VERSION.7z *
+cat  ./nsisbi-electronbuilder-VERSION.7z | openssl dgst -sha512 -binary | base64
+# To use with electron-builder:
+# [ ] -> You must host .7z at a remote URL
+# [ ] -> You must include sha512 checksum in your electron-builder config
+```
 ---
 
 *Sheparded with ❤️ by the Electron-Builder community*
+
